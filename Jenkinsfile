@@ -20,7 +20,7 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 sh """
-                docker build -t ${IMAGE_NAME} .
+                docker build -t ${IMAGE_NAME} . --no-cache
                 minikube image load ${IMAGE_NAME}
                 """
             }
