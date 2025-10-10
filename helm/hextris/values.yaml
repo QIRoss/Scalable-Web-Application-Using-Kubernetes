@@ -1,8 +1,8 @@
 replicaCount: 2
 
 image:
-  repository: hextris
-  tag: latest
+  repository: 492211462076.dkr.ecr.us-east-1.amazonaws.com/hextrix
+  tag: "1"
   pullPolicy: IfNotPresent
 
 service:
@@ -16,7 +16,7 @@ ingress:
   annotations: 
     nginx.ingress.kubernetes.io/rewrite-target: /
   hosts:
-    - host: hextris.local
+    - host: ""
       paths:
         - path: /
           pathType: Prefix
@@ -32,9 +32,3 @@ resources:
 
 autoscaling:
   enabled: false
-
-nodeSelector: {}
-
-tolerations: []
-
-affinity: {}
