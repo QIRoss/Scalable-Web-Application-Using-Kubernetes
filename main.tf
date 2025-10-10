@@ -174,7 +174,7 @@ resource "aws_instance" "minikube" {
               # Install kubectl
               echo "⚙️ Installing kubectl..."
               curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-              install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+              sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
               
               # Install Minikube
               echo "🎯 Installing Minikube..."
@@ -207,7 +207,7 @@ resource "aws_instance" "minikube" {
               sudo -u ubuntu minikube image load 492211462076.dkr.ecr.us-east-1.amazonaws.com/hextrix:1
               
               echo "🚀 Deploying with Helm..."
-              cd /home/ubuntu && sudo -u ubuntu helm install hextris ./helm/ --namespace hextris --create-namespace
+              cd /home/ubuntu && sudo -u ubuntu helm upgrade --install hextris ./helm/ --namespace hextris --create-namespace
 
               sudo iptables -t nat -A PREROUTING -p tcp --dport 80 -j REDIRECT --to-port 8080
 
