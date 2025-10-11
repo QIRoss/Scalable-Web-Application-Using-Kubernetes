@@ -3,135 +3,74 @@ pipeline {
         kubernetes {
             cloud 'minikube-local'
             label 'jenkins-agent'
-            yamlFile 'jenkins-pod-template.yaml'
+            yaml '''
+apiVersion: v1
+kind: Pod
+metadata:
+  namespace: hextris
+spec:
+  containers:
+  - name: jnlp
+    image: jenkins/inbound-agent:latest
+    args: ['$(JENKINS_SECRET)', '$(JENKINS_NAME)']
+
+  - name: docker
+    image: docker:latest
+    command: ['sleep']
+    args: ['infinity']
+    volumeMounts:
+    - name: docker-sock
+      mountPath: /var/run/docker.sock
+
+  - name: kubectl
+    image: bitnami/kubectl:latest
+    command: ['sleep']
+    args: ['infinity']
+
+  volumes:
+  - name: docker-sock
+    hostPath:
+      path: /var/run/docker.sock
+'''
         }
+    }
+    
+    // 🔥 ADICIONE ESTAS OPÇÕES PARA EVITAR CONCORRÊNCIA
+    options {
+        disableConcurrentBuilds()
+        timeout(time: 10, unit: 'MINUTES')
     }
     
     triggers {
         pollSCM('H/2 * * * *')
     }
     
-    environment {
-        IMAGE_NAME = "hextris"
-        IMAGE_TAG = "${env.GIT_COMMIT ? env.GIT_COMMIT.substring(0, 7) : 'latest'}"
-        K8S_NAMESPACE = "hextris"
-    }
-    
     stages {
-        stage('Checkout & Setup') {
-            steps {
-                checkout scm
-                echo "📦 Repository: ${env.GIT_URL}"
-            }
-        }
-        
-        stage('Verify Kubernetes Access') {
+        stage('Cleanup Previous Pods') {
             steps {
                 container('kubectl') {
-                    sh """
-                    echo "🔧 Verificando acesso ao Kubernetes..."
-                    kubectl get nodes
-                    kubectl get ns ${K8S_NAMESPACE} || kubectl create ns ${K8S_NAMESPACE}
-                    echo "✅ Kubernetes access verified"
-                    """
+                    script {
+                        sh '''
+                        echo "🧹 Cleaning up previous Jenkins agent pods..."
+                        # Listar e deletar pods antigos do Jenkins
+                        kubectl get pods -n hextris -l jenkins=agent --no-headers=true | awk '{print $1}' | xargs --no-run-if-empty kubectl delete pod -n hextris
+                        sleep 5
+                        '''
+                    }
                 }
             }
         }
         
-        stage('Build Docker Image') {
+        stage('Test') {
             steps {
+                echo "✅ Build único rodando!"
                 container('docker') {
-                    script {
-                        echo "🏗️ Building Docker image..."
-                        sh """
-                        docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .
-                        docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${IMAGE_NAME}:latest
-                        
-                        echo "📋 Images built:"
-                        docker images | grep ${IMAGE_NAME}
-                        """
-                    }
+                    sh 'docker --version'
                 }
-            }
-        }
-        
-        stage('Load to Minikube') {
-            steps {
-                container('docker') {
-                    script {
-                        echo "🎯 Loading image to Minikube..."
-                        sh """
-                        minikube image load ${IMAGE_NAME}:${IMAGE_TAG}
-                        minikube image load ${IMAGE_NAME}:latest
-                        
-                        echo "✅ Images loaded to Minikube"
-                        """
-                    }
-                }
-            }
-        }
-        
-        stage('Deploy to Kubernetes') {
-            steps {
                 container('kubectl') {
-                    script {
-                        echo "🚀 Deploying application..."
-                        sh """
-                        # Deploy usando Helm
-                        helm upgrade --install hextris ./helm/hextris/ \
-                          --namespace ${K8S_NAMESPACE} \
-                          --set image.repository=${IMAGE_NAME} \
-                          --set image.tag=latest \
-                          --wait --timeout 300s
-                        
-                        echo "📊 Deployment status:"
-                        kubectl get pods,svc -n ${K8S_NAMESPACE}
-                        """
-                    }
+                    sh 'kubectl get pods -n hextris'
                 }
             }
         }
-        
-        stage('Verify Deployment') {
-            steps {
-                container('kubectl') {
-                    script {
-                        echo "🔍 Verifying deployment..."
-                        sh """
-                        # Aguardar pods ficarem ready
-                        kubectl wait --for=condition=ready pod -l app=hextris -n ${K8S_NAMESPACE} --timeout=120s
-                        
-                        # Verificar status
-                        kubectl get deployment hextris -n ${K8S_NAMESPACE}
-                        echo "✅ Deployment verified!"
-                        """
-                    }
-                }
-            }
-        }
-    }
-    
-    post {
-        always {
-            echo "📊 Pipeline execution completed"
-            script {
-                // Removemos o container do post para evitar o erro de contexto
-                echo "🏷️ Image used: ${IMAGE_NAME}:${IMAGE_TAG}"
-            }
-        }
-        success {
-            echo "🎉 Pipeline executado com sucesso!"
-            script {
-                currentBuild.description = "✅ Success - ${IMAGE_TAG}"
-            }
-        }
-        failure {
-            echo "❌ Pipeline falhou!"
-        }
-    }
-    
-    options {
-        timeout(time: 15, unit: 'MINUTES')
-        buildDiscarder(logRotator(numToKeepStr: '5'))
     }
 }
