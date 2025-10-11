@@ -1,7 +1,7 @@
 pipeline {
     agent {
         kubernetes {
-            cloud 'minikube-local'
+            cloud 'hextris'
             label 'jenkins-agent'
             yaml """
 apiVersion: v1
