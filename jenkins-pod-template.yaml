@@ -1,30 +1,29 @@
 apiVersion: v1
 kind: Pod
 metadata:
-  name: jenkins-agent
   namespace: hextris
-  labels:
-    app: jenkins-agent
 spec:
   containers:
   - name: jnlp
     image: jenkins/inbound-agent:latest
-    args: ['\$(JENKINS_SECRET)', '\$(JENKINS_NAME)']
+    args: ['$(JENKINS_SECRET)', '$(JENKINS_NAME)']
+    env:
+    - name: JENKINS_URL
+      value: "http://host.minikube.internal:8080"
+    - name: JENKINS_TUNNEL
+      value: "host.minikube.internal:50000"
     resources:
       requests:
-        memory: "256Mi"
-        cpu: "100m"
-      limits:
         memory: "512Mi"
+        cpu: "200m"
+      limits:
+        memory: "1Gi"
         cpu: "500m"
   
   - name: docker
     image: docker:latest
     command: ['sleep']
-    args: ['infinity']
-    env:
-    - name: DOCKER_HOST
-      value: tcp://docker:2376
+    args: ['999999']
     volumeMounts:
     - name: docker-sock
       mountPath: /var/run/docker.sock
@@ -39,7 +38,7 @@ spec:
   - name: kubectl
     image: bitnami/kubectl:latest
     command: ['sleep']
-    args: ['infinity']
+    args: ['999999']
     resources:
       requests:
         memory: "256Mi"

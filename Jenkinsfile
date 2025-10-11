@@ -2,7 +2,7 @@ pipeline {
     agent {
         kubernetes {
             cloud 'minikube-local'
-            label 'jenkins-agent'
+            label 'jenkins-agent-test'
             yaml '''
 apiVersion: v1
 kind: Pod
@@ -13,62 +13,42 @@ spec:
   - name: jnlp
     image: jenkins/inbound-agent:latest
     args: ['$(JENKINS_SECRET)', '$(JENKINS_NAME)']
+    env:
+    - name: JENKINS_URL
+      value: "http://host.minikube.internal:8080"
+    - name: JENKINS_TUNNEL  
+      value: "host.minikube.internal:50000"
 
-  - name: docker
-    image: docker:latest
+  - name: network-test
+    image: curlimages/curl:latest
     command: ['sleep']
-    args: ['infinity']
-    volumeMounts:
-    - name: docker-sock
-      mountPath: /var/run/docker.sock
-
-  - name: kubectl
-    image: bitnami/kubectl:latest
-    command: ['sleep']
-    args: ['infinity']
-
-  volumes:
-  - name: docker-sock
-    hostPath:
-      path: /var/run/docker.sock
+    args: ['3600']
 '''
         }
     }
     
-    // 🔥 ADICIONE ESTAS OPÇÕES PARA EVITAR CONCORRÊNCIA
     options {
         disableConcurrentBuilds()
-        timeout(time: 10, unit: 'MINUTES')
-    }
-    
-    triggers {
-        pollSCM('H/2 * * * *')
     }
     
     stages {
-        stage('Cleanup Previous Pods') {
+        stage('Test Network') {
             steps {
-                container('kubectl') {
+                container('network-test') {
                     script {
                         sh '''
-                        echo "🧹 Cleaning up previous Jenkins agent pods..."
-                        # Listar e deletar pods antigos do Jenkins
-                        kubectl get pods -n hextris -l jenkins=agent --no-headers=true | awk '{print $1}' | xargs --no-run-if-empty kubectl delete pod -n hextris
-                        sleep 5
+                        echo "🔍 Testing connectivity to Jenkins..."
+                        echo "=== Testing Jenkins URL ==="
+                        curl -v http://host.minikube.internal:8080 || echo "❌ Cannot reach Jenkins"
+                        
+                        echo "=== Testing Jenkins Tunnel ==="
+                        nc -zv host.minikube.internal 50000 || echo "❌ Cannot reach Jenkins tunnel"
+                        
+                        echo "=== Network Info ==="
+                        cat /etc/hosts
+                        ping -c 2 host.minikube.internal
                         '''
                     }
-                }
-            }
-        }
-        
-        stage('Test') {
-            steps {
-                echo "✅ Build único rodando!"
-                container('docker') {
-                    sh 'docker --version'
-                }
-                container('kubectl') {
-                    sh 'kubectl get pods -n hextris'
                 }
             }
         }
