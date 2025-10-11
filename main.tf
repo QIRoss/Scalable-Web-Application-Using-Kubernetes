@@ -75,6 +75,7 @@ resource "aws_security_group" "minikube" {
     to_port     = 22
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
+    description = "SSH access"
   }
 
   ingress {
@@ -82,6 +83,31 @@ resource "aws_security_group" "minikube" {
     to_port     = 80
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
+    description = "Hextris application HTTP"
+  }
+
+  ingress {
+    from_port   = 8443
+    to_port     = 8443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "Kubernetes API Server for Jenkins"
+  }
+
+  ingress {
+    from_port   = 50000
+    to_port     = 50000
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "Jenkins JNLP agents"
+  }
+
+  ingress {
+    from_port   = 30000
+    to_port     = 32767
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "Kubernetes NodePort range"
   }
 
   egress {
@@ -116,6 +142,35 @@ resource "aws_iam_role" "minikube_role" {
 resource "aws_iam_role_policy_attachment" "ecr_power_user" {
   role       = aws_iam_role.minikube_role.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser"
+}
+
+resource "aws_iam_role_policy" "ecr_access" {
+  name = "ecr-access-policy"
+  role = aws_iam_role.minikube_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "ecr:GetAuthorizationToken",
+          "ecr:BatchCheckLayerAvailability",
+          "ecr:GetDownloadUrlForLayer",
+          "ecr:GetRepositoryPolicy",
+          "ecr:DescribeRepositories",
+          "ecr:ListImages",
+          "ecr:DescribeImages",
+          "ecr:BatchGetImage",
+          "ecr:InitiateLayerUpload",
+          "ecr:UploadLayerPart",
+          "ecr:CompleteLayerUpload",
+          "ecr:PutImage"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
 }
 
 resource "aws_iam_instance_profile" "minikube_profile" {
@@ -185,8 +240,10 @@ resource "aws_instance" "minikube" {
               echo "📦 Installing Helm..."
               curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
               
-              # Start Minikube with ingress
-              echo "🚀 Starting Minikube..."
+              echo "🚀 Starting Minikube for Jenkins..."
+              PUBLIC_IP=$(curl -s https://checkip.amazonaws.com | tr -d '\n')
+              echo "Public IP detected: $PUBLIC_IP"
+              
               sudo -u ubuntu minikube start --driver=docker --memory=4g --cpus=2
               sudo -u ubuntu minikube addons enable ingress
               
@@ -208,6 +265,7 @@ resource "aws_instance" "minikube" {
               
               echo "🚀 Deploying with Helm..."
               cd /home/ubuntu && sudo -u ubuntu helm upgrade --install hextris ./helm/ --namespace hextris --create-namespace
+              cd /home/ubuntu && sudo -u ubuntu helm upgrade --install hextris ./helm/ --namespace hextris --create-namespace
 
               sudo iptables -t nat -A PREROUTING -p tcp --dport 80 -j REDIRECT --to-port 8080
 
@@ -219,7 +277,10 @@ resource "aws_instance" "minikube" {
     Name = "minikube-hextris"
   }
 
-  depends_on = [aws_iam_role_policy_attachment.ecr_power_user]
+  depends_on = [
+    aws_iam_role_policy_attachment.ecr_power_user,
+    aws_iam_role_policy.ecr_access
+  ]
 }
 
 output "ssh_command" {
