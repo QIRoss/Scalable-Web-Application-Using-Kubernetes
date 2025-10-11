@@ -5,7 +5,7 @@ pipeline {
         stage('Test') {
             steps {
                 echo "✅ Pipeline funcionando!"
-                sh 'echo "Hello from Jenkins Update Test 4"'
+                sh 'echo "Hello from Jenkins Update Test 5"'
             }
         }
     }
