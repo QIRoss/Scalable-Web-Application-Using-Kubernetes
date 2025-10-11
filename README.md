@@ -92,7 +92,7 @@ kubectl get ingress -n hextris
 kubectl describe ingress hextris-ingress -n hextris
 ```
 
-2. Configure Local DNS Access
+2. Configure Local DNS Access 
 ```
 # Get Minikube IP address
 minikube ip
