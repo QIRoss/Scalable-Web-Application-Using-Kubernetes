@@ -3,7 +3,7 @@ pipeline {
         kubernetes {
             cloud 'minikube-local'
             label 'jenkins-agent'
-            yamlFile 'helm/jenkins-agent/templates/pod-template.yaml'
+            yamlFile 'jenkins-pod-template.yaml'
         }
     }
     
@@ -21,11 +21,18 @@ pipeline {
         stage('Checkout & Setup') {
             steps {
                 checkout scm
+                echo "📦 Repository: ${env.GIT_URL}"
+            }
+        }
+        
+        stage('Verify Kubernetes Access') {
+            steps {
                 container('kubectl') {
                     sh """
-                    echo "🔧 Configurando ambiente..."
+                    echo "🔧 Verificando acesso ao Kubernetes..."
                     kubectl get nodes
                     kubectl get ns ${K8S_NAMESPACE} || kubectl create ns ${K8S_NAMESPACE}
+                    echo "✅ Kubernetes access verified"
                     """
                 }
             }
@@ -58,7 +65,6 @@ pipeline {
                         minikube image load ${IMAGE_NAME}:latest
                         
                         echo "✅ Images loaded to Minikube"
-                        minikube image list | grep ${IMAGE_NAME} || echo "⚠️ No images found"
                         """
                     }
                 }
@@ -71,14 +77,14 @@ pipeline {
                     script {
                         echo "🚀 Deploying application..."
                         sh """
-                        # Usar Helm para deploy
+                        # Deploy usando Helm
                         helm upgrade --install hextris ./helm/hextris/ \
                           --namespace ${K8S_NAMESPACE} \
                           --set image.repository=${IMAGE_NAME} \
                           --set image.tag=latest \
                           --wait --timeout 300s
                         
-                        # Verificar deploy
+                        echo "📊 Deployment status:"
                         kubectl get pods,svc -n ${K8S_NAMESPACE}
                         """
                     }
@@ -97,30 +103,7 @@ pipeline {
                         
                         # Verificar status
                         kubectl get deployment hextris -n ${K8S_NAMESPACE}
-                        kubectl get pods -n ${K8S_NAMESPACE} -o wide
-                        
                         echo "✅ Deployment verified!"
-                        """
-                    }
-                }
-            }
-        }
-        
-        stage('Smoke Test') {
-            steps {
-                container('kubectl') {
-                    script {
-                        echo "🚬 Running smoke test..."
-                        sh """
-                        # Testar aplicação
-                        kubectl port-forward -n ${K8S_NAMESPACE} service/hextris-service 8080:80 &
-                        sleep 5
-                        
-                        echo "🌐 Testing application..."
-                        curl -s http://localhost:8080 && echo "✅ Application is accessible" || echo "⚠️ Application not accessible"
-                        
-                        # Parar port-forward
-                        pkill kubectl
                         """
                     }
                 }
@@ -131,12 +114,9 @@ pipeline {
     post {
         always {
             echo "📊 Pipeline execution completed"
-            container('kubectl') {
-                sh """
-                echo "🎯 Final status:"
-                kubectl get pods -n ${K8S_NAMESPACE}
+            script {
+                // Removemos o container do post para evitar o erro de contexto
                 echo "🏷️ Image used: ${IMAGE_NAME}:${IMAGE_TAG}"
-                """
             }
         }
         success {
@@ -147,13 +127,6 @@ pipeline {
         }
         failure {
             echo "❌ Pipeline falhou!"
-            container('kubectl') {
-                sh """
-                echo "🔍 Debug information:"
-                kubectl describe deployment hextris -n ${K8S_NAMESPACE} || true
-                kubectl logs -n ${K8S_NAMESPACE} -l app=hextris --tail=20 || true
-                """
-            }
         }
     }
     

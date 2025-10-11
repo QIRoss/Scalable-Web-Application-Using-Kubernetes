@@ -1,0 +1,54 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: jenkins-agent
+  namespace: hextris
+  labels:
+    app: jenkins-agent
+spec:
+  containers:
+  - name: jnlp
+    image: jenkins/inbound-agent:latest
+    args: ['\$(JENKINS_SECRET)', '\$(JENKINS_NAME)']
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "100m"
+      limits:
+        memory: "512Mi"
+        cpu: "500m"
+  
+  - name: docker
+    image: docker:latest
+    command: ['sleep']
+    args: ['infinity']
+    env:
+    - name: DOCKER_HOST
+      value: tcp://docker:2376
+    volumeMounts:
+    - name: docker-sock
+      mountPath: /var/run/docker.sock
+    resources:
+      requests:
+        memory: "512Mi"
+        cpu: "200m"
+      limits:
+        memory: "1Gi"
+        cpu: "500m"
+  
+  - name: kubectl
+    image: bitnami/kubectl:latest
+    command: ['sleep']
+    args: ['infinity']
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "100m"
+      limits:
+        memory: "512Mi"
+        cpu: "300m"
+
+  volumes:
+  - name: docker-sock
+    hostPath:
+      path: /var/run/docker.sock
