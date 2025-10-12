@@ -80,18 +80,21 @@ spec:
 
         stage('Deploy to Kubernetes') {
             steps {
-                container('kubectl') {
-                    sh """
-                    echo "🚀 Updating deployment ${IMAGE_NAME} with new image..."
-                    kubectl set image deployment/${IMAGE_NAME} ${IMAGE_NAME}=${IMAGE_NAME}:${IMAGE_TAG} -n ${K8S_NAMESPACE} || \\
-                    kubectl set image deployment/${IMAGE_NAME} ${IMAGE_NAME}=${IMAGE_NAME}:latest -n ${K8S_NAMESPACE}
-                    
-                    echo "⏳ Waiting for rollout to finish..."
-                    kubectl rollout status deployment/${IMAGE_NAME} -n ${K8S_NAMESPACE} --timeout=300s
+                container('docker') {
+                    sh '''
+                    # Instala kubectl temporariamente
+                    curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+                    chmod +x kubectl
+                    mv kubectl /usr/local/bin/
 
-                    echo "📊 Current pods:"
+                    # Atualiza deployment
+                    kubectl set image deployment/${IMAGE_NAME} ${IMAGE_NAME}=${IMAGE_NAME}:${IMAGE_TAG} -n ${K8S_NAMESPACE} || \
+                    kubectl set image deployment/${IMAGE_NAME} ${IMAGE_NAME}=${IMAGE_NAME}:latest -n ${K8S_NAMESPACE}
+
+                    # Espera rollout
+                    kubectl rollout status deployment/${IMAGE_NAME} -n ${K8S_NAMESPACE} --timeout=300s
                     kubectl get pods -n ${K8S_NAMESPACE} -o wide
-                    """
+                    '''
                 }
             }
         }
