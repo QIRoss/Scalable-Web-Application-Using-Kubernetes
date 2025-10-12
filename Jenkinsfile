@@ -80,7 +80,6 @@ spec:
 
         stage('Deploy to Kubernetes') {
             steps {
-                container('docker') {
                     sh '''
                     # Instala kubectl temporariamente
                     apk add --no-cache curl
@@ -97,7 +96,6 @@ spec:
                     kubectl rollout status deployment/${IMAGE_NAME} -n ${K8S_NAMESPACE} --timeout=300s
                     kubectl get pods -n ${K8S_NAMESPACE} -o wide
                     '''
-                }
             }
         }
     }
