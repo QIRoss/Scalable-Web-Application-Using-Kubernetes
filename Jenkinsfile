@@ -29,9 +29,9 @@ spec:
         - name: workspace-volume
         mountPath: /home/jenkins/agent
     resources:
-    requests:
-        memory: "512Mi"
-        cpu: "500m"
+        requests:
+            memory: "512Mi"
+            cpu: "500m"
 
   volumes:
   - name: docker-sock
