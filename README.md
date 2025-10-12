@@ -185,3 +185,10 @@ EOF
 chmod +x test-load-balancing.sh
 ./test-load-balancing.sh
 ```
+
+### Jenkins Configuration
+Used these IP tables commands so Minikube could respond Jenkins
+```
+sudo iptables -I INPUT -s 192.168.49.0/24 -p tcp --dport 8080 -j ACCEPT
+sudo iptables -I INPUT -s 192.168.49.0/24 -p tcp --dport 50000 -j ACCEPT
+```
