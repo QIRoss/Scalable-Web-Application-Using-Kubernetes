@@ -68,32 +68,20 @@ spec:
                 }
             }
         }
-        
-        stage('Load to Minikube') {
-            steps {
-                container('docker') {
-                    sh """
-                    echo "🎯 Loading image to Minikube..."
-                    minikube image load ${IMAGE_NAME}:${IMAGE_TAG}
-                    minikube image load ${IMAGE_NAME}:latest
-                    """
-                }
-            }
-        }
-        
-        stage('Deploy') {
+
+        stage('Deploy to Kubernetes') {
             steps {
                 container('kubectl') {
                     sh """
-                    echo "🚀 Deploying application..."
-                    helm upgrade --install hextris ./helm/hextris/ \
-                      --namespace ${K8S_NAMESPACE} \
-                      --set image.repository=${IMAGE_NAME} \
-                      --set image.tag=latest \
-                      --wait --timeout 300s
+                    echo "🚀 Updating deployment ${IMAGE_NAME} with new image..."
+                    kubectl set image deployment/${IMAGE_NAME} ${IMAGE_NAME}=${IMAGE_NAME}:${IMAGE_TAG} -n ${K8S_NAMESPACE} || \
+                    kubectl set image deployment/${IMAGE_NAME} ${IMAGE_NAME}=${IMAGE_NAME}:latest -n ${K8S_NAMESPACE}
                     
-                    echo "📊 Deployment status:"
-                    kubectl get pods,svc -n ${K8S_NAMESPACE}
+                    echo "⏳ Waiting for rollout to finish..."
+                    kubectl rollout status deployment/${IMAGE_NAME} -n ${K8S_NAMESPACE} --timeout=300s
+
+                    echo "📊 Current pods:"
+                    kubectl get pods -n ${K8S_NAMESPACE} -o wide
                     """
                 }
             }
