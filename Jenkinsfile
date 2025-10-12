@@ -71,7 +71,7 @@ spec:
                 container('docker') {
                     sh """
                     echo "🏗️ Building Docker image..."
-                    docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .
+                    docker build -t ${IMAGE_NAME}:${IMAGE_TAG} . --no-cache
                     docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${IMAGE_NAME}:latest
                     """
                 }
@@ -105,9 +105,6 @@ spec:
     post {
         always {
             echo "🎯 Pipeline completed - Build #${BUILD_NUMBER}"
-            container('kubectl') {
-                sh "kubectl get pods -n ${K8S_NAMESPACE}"
-            }
         }
         success {
             echo "🎉 Pipeline executado com sucesso!"

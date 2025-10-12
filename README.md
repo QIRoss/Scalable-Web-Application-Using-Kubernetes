@@ -192,3 +192,8 @@ Used these IP tables commands so Minikube could respond Jenkins
 sudo iptables -I INPUT -s 192.168.49.0/24 -p tcp --dport 8080 -j ACCEPT
 sudo iptables -I INPUT -s 192.168.49.0/24 -p tcp --dport 50000 -j ACCEPT
 ```
+
+Also apply Jenkins Role in Minikube
+```
+kubectl apply -f jenkins-role.yaml
+```
