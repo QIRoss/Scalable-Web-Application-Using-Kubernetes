@@ -22,10 +22,16 @@ spec:
       mountPath: /var/run/docker.sock
 
   - name: kubectl
-    image: bitnami/kubectl:latest
-    tty: true
-    command:
-    - cat
+    image: bitnami/kubectl:1.33
+    command: ["tail"]
+    args: ["-f", "/dev/null"]
+    volumeMounts:
+        - name: workspace-volume
+        mountPath: /home/jenkins/agent
+    resources:
+    requests:
+        memory: "512Mi"
+        cpu: "500m"
 
   volumes:
   - name: docker-sock
@@ -72,16 +78,8 @@ spec:
 
         stage('Deploy to Kubernetes') {
             steps {
-                container('jnlp') {
+                container('kubectl') {
                     sh '''
-                    mkdir -p /home/jenkins/bin
-                    echo "📥 Installing kubectl..."
-                    curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-                    chmod +x kubectl
-                    mv kubectl /home/jenkins/bin/
-
-                    export PATH=/home/jenkins/bin:$PATH
-
                     echo "🚀 Updating deployment ${IMAGE_NAME} with new image..."
                     kubectl set image deployment/${IMAGE_NAME} ${IMAGE_NAME}=${IMAGE_NAME}:${IMAGE_TAG} -n ${K8S_NAMESPACE} || \
                     kubectl set image deployment/${IMAGE_NAME} ${IMAGE_NAME}=${IMAGE_NAME}:latest -n ${K8S_NAMESPACE}
