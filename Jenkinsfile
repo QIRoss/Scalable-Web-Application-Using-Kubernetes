@@ -2,7 +2,7 @@ pipeline {
     agent {
         kubernetes {
             cloud 'minikube-local'
-            label 'jenkins-agent-test'
+            label 'jenkins-agent-basic'
             yaml '''
 apiVersion: v1
 kind: Pod
@@ -10,19 +10,14 @@ metadata:
   namespace: hextris
 spec:
   containers:
-  - name: jnlp
-    image: jenkins/inbound-agent:latest
-    args: ['$(JENKINS_SECRET)', '$(JENKINS_NAME)']
-    env:
-    - name: JENKINS_URL
-      value: "http://host.minikube.internal:8080"
-    - name: JENKINS_TUNNEL  
-      value: "host.minikube.internal:50000"
-
-  - name: network-test
-    image: curlimages/curl:latest
+  - name: main
+    image: alpine:latest
     command: ['sleep']
-    args: ['3600']
+    args: ['999999']
+    resources:
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
 '''
         }
     }
@@ -32,25 +27,31 @@ spec:
     }
     
     stages {
-        stage('Test Network') {
+        stage('Test') {
             steps {
-                container('network-test') {
+                container('main') {
                     script {
+                        echo "🎉 Estou rodando no Minikube!"
                         sh '''
-                        echo "🔍 Testing connectivity to Jenkins..."
-                        echo "=== Testing Jenkins URL ==="
-                        curl -v http://host.minikube.internal:8080 || echo "❌ Cannot reach Jenkins"
-                        
-                        echo "=== Testing Jenkins Tunnel ==="
-                        nc -zv host.minikube.internal 50000 || echo "❌ Cannot reach Jenkins tunnel"
-                        
-                        echo "=== Network Info ==="
-                        cat /etc/hosts
-                        ping -c 2 host.minikube.internal
+                        echo "✅ Funcionando perfeitamente!"
+                        echo "📅 Data: $(date)"
+                        echo "🏷️ Build: ${BUILD_NUMBER}"
+                        echo "💻 Hostname: $(hostname)"
+                        echo "=== Informações ==="
+                        uname -a
+                        cat /etc/os-release | head -3
+                        echo "=== Lista de arquivos ==="
+                        ls -la
                         '''
                     }
                 }
             }
+        }
+    }
+    
+    post {
+        always {
+            echo "🎯 Pipeline executado no Minikube - Build #${BUILD_NUMBER}"
         }
     }
 }
