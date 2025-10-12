@@ -80,7 +80,15 @@ spec:
 
         stage('Deploy to Kubernetes') {
             steps {
+                container('docker') {
                     sh '''
+                    # Instala kubectl temporariamente
+                    apk add --no-cache curl
+                    curl -LO https://dl.k8s.io/release/stable.txt
+                    curl -LO "https://dl.k8s.io/release/$(cat stable.txt)/bin/linux/amd64/kubectl"
+                    chmod +x kubectl
+                    mv kubectl /usr/local/bin/
+
                     # Atualiza deployment
                     kubectl set image deployment/${IMAGE_NAME} ${IMAGE_NAME}=${IMAGE_NAME}:${IMAGE_TAG} -n ${K8S_NAMESPACE} || \
                     kubectl set image deployment/${IMAGE_NAME} ${IMAGE_NAME}=${IMAGE_NAME}:latest -n ${K8S_NAMESPACE}
@@ -89,6 +97,7 @@ spec:
                     kubectl rollout status deployment/${IMAGE_NAME} -n ${K8S_NAMESPACE} --timeout=300s
                     kubectl get pods -n ${K8S_NAMESPACE} -o wide
                     '''
+                }
             }
         }
     }
