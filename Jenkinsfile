@@ -72,7 +72,7 @@ spec:
 
         stage('Deploy to Kubernetes') {
             steps {
-                container('kubectl') {
+                container('jnlp') {
                     sh """
                     echo "🚀 Updating deployment ${IMAGE_NAME} with new image..."
                     kubectl set image deployment/${IMAGE_NAME} ${IMAGE_NAME}=${IMAGE_NAME}:${IMAGE_TAG} -n ${K8S_NAMESPACE} || \
