@@ -74,11 +74,13 @@ spec:
             steps {
                 container('jnlp') {
                     sh '''
-
+                    mkdir -p /home/jenkins/bin
                     echo "📥 Installing kubectl..."
                     curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
                     chmod +x kubectl
-                    mv kubectl /usr/local/bin/
+                    mv kubectl /home/jenkins/bin/
+
+                    export PATH=/home/jenkins/bin:$PATH
 
                     echo "🚀 Updating deployment ${IMAGE_NAME} with new image..."
                     kubectl set image deployment/${IMAGE_NAME} ${IMAGE_NAME}=${IMAGE_NAME}:${IMAGE_TAG} -n ${K8S_NAMESPACE} || \
