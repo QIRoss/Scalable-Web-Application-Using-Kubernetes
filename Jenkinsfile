@@ -9,10 +9,6 @@ metadata:
   namespace: hextris
 spec:
   containers:
-  - name: jnlp
-    image: jenkins/inbound-agent:latest
-    args: ['$(JENKINS_SECRET)', '$(JENKINS_NAME)']
-
   - name: docker
     image: docker:latest
     command: ['sleep']
