@@ -73,13 +73,13 @@ spec:
         stage('Deploy to Kubernetes') {
             steps {
                 container('jnlp') {
-                    sh """
+                    sh '''
 
                     echo "📥 Installing kubectl..."
                     curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
                     chmod +x kubectl
                     mv kubectl /usr/local/bin/
-                    
+
                     echo "🚀 Updating deployment ${IMAGE_NAME} with new image..."
                     kubectl set image deployment/${IMAGE_NAME} ${IMAGE_NAME}=${IMAGE_NAME}:${IMAGE_TAG} -n ${K8S_NAMESPACE} || \
                     kubectl set image deployment/${IMAGE_NAME} ${IMAGE_NAME}=${IMAGE_NAME}:latest -n ${K8S_NAMESPACE}
@@ -89,7 +89,7 @@ spec:
 
                     echo "📊 Current pods:"
                     kubectl get pods -n ${K8S_NAMESPACE} -o wide
-                    """
+                    '''
                 }
             }
         }
