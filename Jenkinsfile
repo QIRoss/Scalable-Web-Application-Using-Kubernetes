@@ -14,24 +14,12 @@ spec:
     args: ['$(JENKINS_SECRET)', '$(JENKINS_NAME)']
 
   - name: docker
-    image: docker:24-dind
+    image: docker:latest
     command: ['sleep']
     args: ['999999']
     volumeMounts:
       - name: docker-sock
         mountPath: /var/run/docker.sock
-
-  - name: kubectl
-    image: bitnami/kubectl:latest
-    command: ["tail"]
-    args: ["-f", "/dev/null"]
-    volumeMounts:
-      - name: workspace-volume
-        mountPath: /home/jenkins/agent
-    resources:
-      requests:
-        memory: "512Mi"
-        cpu: "500m"
 
   volumes:
     - name: docker-sock
