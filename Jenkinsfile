@@ -22,7 +22,7 @@ spec:
         mountPath: /var/run/docker.sock
 
   - name: kubectl
-    image: bitnami/kubectl:1.33
+    image: bitnami/kubectl:latest
     command: ["tail"]
     args: ["-f", "/dev/null"]
     volumeMounts:
