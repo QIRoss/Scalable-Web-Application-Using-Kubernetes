@@ -14,7 +14,7 @@ spec:
     args: ['$(JENKINS_SECRET)', '$(JENKINS_NAME)']
 
   - name: docker
-    image: docker:24.0.2-cli-bullseye
+    image: docker:24-dind
     command: ['sleep']
     args: ['999999']
     volumeMounts:
