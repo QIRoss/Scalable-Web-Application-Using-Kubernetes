@@ -23,8 +23,9 @@ spec:
 
   - name: kubectl
     image: bitnami/kubectl:latest
-    command: ['sleep']
-    args: ['999999']
+    tty: true
+    command:
+    - cat
 
   volumes:
   - name: docker-sock
