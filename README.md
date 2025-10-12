@@ -197,3 +197,9 @@ Also apply Jenkins Role in Minikube
 ```
 kubectl apply -f jenkins-role.yaml
 ```
+
+## Used configurations in Jenkins UI
+
+1) Install Kubernetes Plugin
+2) Manage Jenkins > Clouds > New Cloud > 'your-cloud-name' + type Kubernetes > Configure > name, Kubernetes URL, Disable HTTPS Certificate Check, Credentials (secret text), Jenkins URL
+3) New Task > Pipeline > Configure > Do Not Allow Concurrent Builds, Periodically Consult SCM H/2 * * * * , Pipeline Script From SCM, Git, Repository URL, Branch Specifier */main, Script Path Jenkinsfile, Lightweight Checkout
