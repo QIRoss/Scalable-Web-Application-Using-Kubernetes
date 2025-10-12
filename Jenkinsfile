@@ -18,25 +18,27 @@ spec:
     command: ['sleep']
     args: ['999999']
     volumeMounts:
-    - name: docker-sock
-      mountPath: /var/run/docker.sock
+      - name: docker-sock
+        mountPath: /var/run/docker.sock
 
   - name: kubectl
     image: bitnami/kubectl:1.33
     command: ["tail"]
     args: ["-f", "/dev/null"]
     volumeMounts:
-        - name: workspace-volume
+      - name: workspace-volume
         mountPath: /home/jenkins/agent
     resources:
-        requests:
-            memory: "512Mi"
-            cpu: "500m"
+      requests:
+        memory: "512Mi"
+        cpu: "500m"
 
   volumes:
-  - name: docker-sock
-    hostPath:
-      path: /var/run/docker.sock
+    - name: docker-sock
+      hostPath:
+        path: /var/run/docker.sock
+    - name: workspace-volume
+      emptyDir: {}
 '''
         }
     }
@@ -52,7 +54,7 @@ spec:
     
     environment {
         IMAGE_NAME = "hextris"
-        IMAGE_TAG = "${env.GIT_COMMIT ? env.GIT_COMMIT.substring(0, 7) : 'latest'}"
+        IMAGE_TAG = "${env.GIT_COMMIT ? env.GIT_COMMIT.substring(0,7) : 'latest'}"
         K8S_NAMESPACE = "hextris"
     }
     
@@ -79,9 +81,9 @@ spec:
         stage('Deploy to Kubernetes') {
             steps {
                 container('kubectl') {
-                    sh '''
+                    sh """
                     echo "🚀 Updating deployment ${IMAGE_NAME} with new image..."
-                    kubectl set image deployment/${IMAGE_NAME} ${IMAGE_NAME}=${IMAGE_NAME}:${IMAGE_TAG} -n ${K8S_NAMESPACE} || \
+                    kubectl set image deployment/${IMAGE_NAME} ${IMAGE_NAME}=${IMAGE_NAME}:${IMAGE_TAG} -n ${K8S_NAMESPACE} || \\
                     kubectl set image deployment/${IMAGE_NAME} ${IMAGE_NAME}=${IMAGE_NAME}:latest -n ${K8S_NAMESPACE}
                     
                     echo "⏳ Waiting for rollout to finish..."
@@ -89,7 +91,7 @@ spec:
 
                     echo "📊 Current pods:"
                     kubectl get pods -n ${K8S_NAMESPACE} -o wide
-                    '''
+                    """
                 }
             }
         }
@@ -107,6 +109,9 @@ spec:
             script {
                 currentBuild.description = "✅ Success - ${IMAGE_TAG}"
             }
+        }
+        failure {
+            echo "❌ Pipeline falhou!"
         }
     }
 }
