@@ -87,6 +87,14 @@ resource "aws_security_group" "minikube" {
   }
 
   ingress {
+    from_port   = 8080
+    to_port     = 8080
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "Jenkins application HTTP"
+  }
+
+  ingress {
     from_port   = 8443
     to_port     = 8443
     protocol    = "tcp"
@@ -180,7 +188,7 @@ resource "aws_iam_instance_profile" "minikube_profile" {
 
 resource "aws_instance" "minikube" {
   ami                    = "ami-0360c520857e3138f" # Ubuntu 24.04
-  instance_type          = "t3.large"
+  instance_type          = "t3.xlarge"
   key_name               = data.aws_key_pair.qiross.key_name
   iam_instance_profile   = aws_iam_instance_profile.minikube_profile.name
   vpc_security_group_ids = [aws_security_group.minikube.id]
@@ -203,6 +211,30 @@ resource "aws_instance" "minikube" {
     }
   }
 
+  provisioner "file" {
+    source      = "${path.module}/jenkins-token.yaml"
+    destination = "/home/ubuntu/jenkins-token.yaml"
+
+    connection {
+      type        = "ssh"
+      user        = "ubuntu"
+      private_key = file("~/.ssh/qiross.pem")
+      host        = self.public_ip
+    }
+  }
+
+  provisioner "file" {
+    source      = "${path.module}/jenkins-role.yaml"
+    destination = "/home/ubuntu/jenkins-role.yaml"
+
+    connection {
+      type        = "ssh"
+      user        = "ubuntu"
+      private_key = file("~/.ssh/qiross.pem")
+      host        = self.public_ip
+    }
+  }
+
   user_data = <<-EOF
               #!/bin/bash
               exec > >(tee /var/log/full-setup.log) 2>&1
@@ -211,7 +243,7 @@ resource "aws_instance" "minikube" {
               
               # Update system
               apt update && apt upgrade -y
-              apt install -y curl wget git unzip
+              apt install -y curl wget git unzip net-tools
               
               # Install AWS CLI v2
               echo "📦 Installing AWS CLI..."
@@ -264,13 +296,34 @@ resource "aws_instance" "minikube" {
               sudo -u ubuntu minikube image load 492211462076.dkr.ecr.us-east-1.amazonaws.com/hextrix:1
               
               echo "🚀 Deploying with Helm..."
-              cd /home/ubuntu && sudo -u ubuntu helm upgrade --install hextris ./helm/ --namespace hextris --create-namespace
+
+              sleep 5
+
               cd /home/ubuntu && sudo -u ubuntu helm upgrade --install hextris ./helm/ --namespace hextris --create-namespace
 
-              sudo iptables -t nat -A PREROUTING -p tcp --dport 80 -j REDIRECT --to-port 8080
+              sleep 5
 
-              sudo -u ubuntu nohup kubectl port-forward -n ingress-nginx service/ingress-nginx-controller 8080:80 --address 0.0.0.0 &
+              cd /home/ubuntu && sudo -u ubuntu helm upgrade --install hextris ./helm/ --namespace hextris --create-namespace
+
+              # docker run --name jenkins --restart=on-failure --detach --publish 8080:8080 --publish 50000:50000 --volume jenkins-data:/var/jenkins_home --volume /var/run/docker.sock:/var/run/docker.sock jenkins/jenkins:lts-jdk17
               
+              #docker exec jenkins cat /var/jenkins_home/secrets/initialAdminPassword
+
+              #cd /home/ubuntu && sudo -u ubuntu kubectl apply -f jenkins-token.yaml
+              #cd /home/ubuntu && sudo -u ubuntu kubectl apply -f jenkins-role.yaml
+              #TOKEN=$(sudo -u ubuntu kubectl get secret jenkins-ci-token -n hextris -o jsonpath='{.data.token}' | base64 --decode)
+
+              #echo "✅ JENKINS_TOKEN:"
+              #echo "--- COPY BELOW ---"
+              #echo $TOKEN
+              #echo "--- COPY ABOVE ---"
+
+              sudo iptables -t nat -A PREROUTING -p tcp --dport 80 -j REDIRECT --to-port 8081
+              #sudo iptables -I INPUT -s 192.168.49.0/24 -p tcp --dport 8080 -j ACCEPT
+              #sudo iptables -I INPUT -s 192.168.49.0/24 -p tcp --dport 50000 -j ACCEPT
+              
+
+              sudo -u ubuntu nohup kubectl port-forward -n ingress-nginx service/ingress-nginx-controller 8081:80 --address 0.0.0.0 &
             EOF
 
   tags = {

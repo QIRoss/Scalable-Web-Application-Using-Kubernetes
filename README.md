@@ -186,7 +186,13 @@ chmod +x test-load-balancing.sh
 ./test-load-balancing.sh
 ```
 
-### Jenkins Configuration
+## Jenkins Configuration
+In case of first install:
+```
+docker exec -ti jenkins bash
+cat /var/jenkins_home/secrets/initialAdminPassword
+```
+
 Used these IP tables commands so Minikube could respond Jenkins
 ```
 sudo iptables -I INPUT -s 192.168.49.0/24 -p tcp --dport 8080 -j ACCEPT
@@ -198,8 +204,67 @@ Also apply Jenkins Role in Minikube
 kubectl apply -f jenkins-role.yaml
 ```
 
-## Used configurations in Jenkins UI
+### Used configurations in Jenkins UI
 
 1) Install Kubernetes Plugin
-2) Manage Jenkins > Clouds > New Cloud > 'your-cloud-name' + type Kubernetes > Configure > name, Kubernetes URL, Disable HTTPS Certificate Check, Credentials (secret text), Jenkins URL
+2) Manage Jenkins > Clouds > New Cloud > Cloud name 'minikube-local' + type Kubernetes > Configure > name, Kubernetes URL, Disable HTTPS Certificate Check, Credentials (secret text), Jenkins URL
 3) New Task > Pipeline > Configure > Do Not Allow Concurrent Builds, Periodically Consult SCM H/2 * * * * , Pipeline Script From SCM, Git, Repository URL, Branch Specifier */main, Script Path Jenkinsfile, Lightweight Checkout
+
+### Secret File for Jenkins Cloud Kubernetes Credentials
+```
+sudo -u ubuntu kubectl delete serviceaccount jenkins -n hextris 2>/dev/null || true
+
+sudo -u ubuntu kubectl apply -f - <<EOF
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: jenkins-ci
+  namespace: hextris
+secrets:
+- name: jenkins-ci-token
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: jenkins-ci-token
+  namespace: hextris
+  annotations:
+    kubernetes.io/service-account.name: jenkins-ci
+type: kubernetes.io/service-account-token
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: jenkins-ci-admin
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- kind: ServiceAccount
+  name: jenkins-ci
+  namespace: hextris
+EOF
+
+sleep 5
+
+TOKEN=$(kubectl get secret jenkins-ci-token -n hextris -o jsonpath='{.data.token}' | base64 --decode)
+
+echo "✅ JENKINS_TOKEN:"
+echo "--- COPY BELOW ---"
+echo "$JENKINS_TOKEN"
+echo "--- COPY ABOVE ---"
+```
+
+### Expose Minikube Traffic port 8443 (Non local Jenkins try, should test other ways)
+```
+sudo iptables -t nat -A PREROUTING -p tcp --dport 8443 -j DNAT --to-destination 192.168.49.2:8443
+sudo iptables -A FORWARD -p tcp -d 192.168.49.2 --dport 8443 -j ACCEPT
+sudo iptables -t nat -A POSTROUTING -d 192.168.49.2 -p tcp --dport 8443 -j MASQUERADE
+```
+
+## Terraform EC2 Instance Debug
+After Log in the instance using SSH, do:
+```
+sudo cat /var/log/full-setup.log
+``` 
