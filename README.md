@@ -1,6 +1,31 @@
 # Scalable-Web-Application-Using-Kubernetes
 Docker, NginX, Helm, Ingress, Terraform and Jenkins to deploy an example app
 
+## Quick Start Commands(Linux local environment)
+
+```
+minikube start --memory=4096 --cpus=2
+
+minikube addons enable ingress
+
+cd helm/hextris
+
+helm install hextris . --namespace hextris --create-namespace
+
+cd ../..
+
+kubectl apply -f jenkins-token.yaml
+
+kubectl apply -f jenkins-role.yaml
+
+echo "$(minikube ip) hextris.local" | sudo tee -a /etc/hosts
+
+docker run --name jenkins --restart=on-failure --detach   --network host   --publish 8080:8080 --publish 50000:50000   --volume jenkins-data:/var/jenkins_home   --volume /var/run/docker.sock:/var/run/docker.sock   jenkins/jenkins:lts-jdk17
+
+sudo iptables -I INPUT -s 192.168.49.0/24 -p tcp --dport 8080 -j ACCEPT
+sudo iptables -I INPUT -s 192.168.49.0/24 -p tcp --dport 50000 -j ACCEPT
+```
+
 ## Application
 
 Use a simple web application ([Hextris](https://github.com/Hextris/hextris))
