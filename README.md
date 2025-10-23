@@ -187,6 +187,11 @@ chmod +x test-load-balancing.sh
 ```
 
 ## Jenkins Configuration
+If local, Docker run using same network as Host:
+```
+docker run --name jenkins --restart=on-failure --detach   --network host   --publish 8080:8080 --publish 50000:50000   --volume jenkins-data:/var/jenkins_home   --volume /var/run/docker.sock:/var/run/docker.sock   jenkins/jenkins:lts-jdk17
+```
+
 In case of first install:
 ```
 docker exec -ti jenkins bash
@@ -268,3 +273,10 @@ After Log in the instance using SSH, do:
 ```
 sudo cat /var/log/full-setup.log
 ``` 
+
+### Use Terraform in AWS
+```
+terraform init
+terraform plan -out=tfplan
+terraform apply tfplan
+```
